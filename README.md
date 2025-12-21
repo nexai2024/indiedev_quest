@@ -1,20 +1,21 @@
-# 🕹️ CodeBox: SaaS E-Learning Platform
+# 🕹️ CodeBox: Level Up Your Coding Skills
 
-**CodeBox** is a gamified, SaaS-based e-learning platform designed to make learning to code as engaging as playing an RPG. Users can sign up, master languages like **Java, Python, HTML, and React**, and earn rewards for their progress through hands-on, interactive exercises.
+**CodeBox** is a modern, gamified SaaS-based e-learning platform that turns the journey of learning programming into an immersive experience. Built with a unique pixel-art aesthetic, CodeBox allows users to master development languages through hands-on, interactive exercises.
 
 ---
 
-## 🎨 Project Essence
+## 🎨 Project Overview
 
-CodeBox moves away from traditional, boring learning management systems. It uses a **pixel-art aesthetic** and **gamification mechanics** to keep users motivated. 
+CodeBox moves away from traditional, boring learning management systems. It uses a **pixel-art aesthetic** and **gamification mechanics** to keep users motivated and engaged throughout their learning journey.
 
-### 🌟 Key Features
-* **XP & Reward System:** Every exercise completed grants **XP (Experience Points)**, which is tracked on a global dashboard.
-* **Daily Streaks:** Stay consistent with an animated streak tracker to encourage daily learning.
-* **Interactive Exercises:** Perform tasks directly in the browser—fix broken code, build layouts, and solve challenges.
-* **Progression Tracking:** Visual progress bars for every course and chapter.
-* **SaaS Membership:** * **Free Tier:** Access to the first 3 chapters of every course.
-    * **Pro Plan:** A 3-day full access pass to unlock all chapters, premium exercises, and advanced features.
+### 🔑 Key Features
+
+* **Interactive Coding Lab:** Solve real-world tasks (like the "HTML Detective") directly in the browser with instant feedback.
+* **Gamified Progress:** Track your growth with an animated dashboard featuring XP bars, total rewards, and learning streaks.
+* **Freemium SaaS Model:**
+    * **Free Users:** Access the first 3 chapters of every course to get a taste of the curriculum.
+    * **Pro Plan:** A 3-day trial or full subscription unlocks all chapters, advanced exercises, and premium tracks.
+* **Curated Learning Paths:** Structured courses for **HTML Beginner, React, Python, and CSS**.
 
 ---
 
@@ -33,17 +34,17 @@ CodeBox moves away from traditional, boring learning management systems. It uses
 
 ## 📸 Screenshots
 
-### 🖥️ Student Dashboard
-The central hub for tracking XP, Badges, and enrolled courses.
+### 🖥️ Animated Dashboard
+The central hub for tracking your XP, total rewards, and active learning streaks.
 ![Dashboard](https://github.com/user-attachments/assets/c1ab26.jpg)
 
-### 📚 Course Curriculum
-Structured learning with "Pro" indicators for advanced content.
+### 📚 Course Syllabus & Pro Access
+Clearly structured chapters with "Pro" badges indicating premium content.
 ![Curriculum](https://github.com/user-attachments/assets/c1ae49.png)
 
 ### 🔍 Interactive Coding Lab
-The "HTML Detective" exercise where users hunt down and fix errors.
-![Exercise](https://github.com/user-attachments/assets/c1b1ae.png)
+The "HTML Detective" mode where users hunt down and fix errors to earn XP.
+![Exercise Lab](https://github.com/user-attachments/assets/c1b1ae.png)
 
 ---
 
@@ -75,13 +76,6 @@ The "HTML Detective" exercise where users hunt down and fix errors.
 
 ---
 
-## 🛣️ Roadmap
-- [ ] **Leaderboard:** Compete with other students globally.
-- [ ] **AI Mentor:** Get real-time hints when you're stuck on an exercise.
-- [ ] **Custom Projects:** A sandbox mode to build and share your own pixel-art sites.
-- [ ] **Certificate Minting:** Earn a verified certificate upon course completion.
-
----
 
 ## 🤝 Contributing
 1. Fork the Project
