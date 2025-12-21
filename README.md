@@ -86,4 +86,4 @@ The "HTML Detective" mode where users hunt down and fix errors to earn XP.
 
 ---
 
-**Developed with 💻 and ☕ by [Vansh Agrawal](https://github.com/your-github-username)**
+**Developed with 💻 and ☕ by [Vansh Agrawal](https://github.com/im-vansh)**
