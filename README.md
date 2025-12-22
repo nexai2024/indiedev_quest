@@ -60,7 +60,7 @@ To get CodeBox running locally, follow these steps:
 
 1.  **Clone the repo:**
     ```bash
-    git clone [https://github.com/im-vansh/codebox.git](https://github.com/im-vansh/codebox.git)
+    git clone https://github.com/im-vansh/Codebox-Leaning_Platform.git
     cd codebox
     ```
 
@@ -74,7 +74,17 @@ To get CodeBox running locally, follow these steps:
     ```env
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
     CLERK_SECRET_KEY=your_clerk_secret
+    
+    NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+    NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/
+    NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
+
+    NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+    NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
+    NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/
+    
     DATABASE_URL=your_neon_db_url
+    
     ```
 
 4.  **Sync Database Schema:**
