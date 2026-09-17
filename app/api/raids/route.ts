@@ -31,9 +31,13 @@ export async function GET(req: NextRequest) {
       .where(eq(raidContributionsTable.raidId, activeRaid.id))
       .orderBy(desc(raidContributionsTable.createdAt));
 
+    const totalGuildDamage = contributions.reduce((acc, curr) => acc + (curr.damage || 0), 0);
+
     return NextResponse.json({
       raid: activeRaid,
-      contributions
+      contributions,
+      totalGuildDamage,
+      activeRaidersCount: Math.max(1, new Set(contributions.map((c) => c.userId)).size)
     });
   } catch (error) {
     console.error("GET raids error:", error);
@@ -52,7 +56,9 @@ export async function GET(req: NextRequest) {
         { id: 1, userName: "Guildmaster Sarah", damage: 250, createdAt: new Date().toISOString() },
         { id: 2, userName: "David K.", damage: 150, createdAt: new Date().toISOString() },
         { id: 3, userName: "Elena R.", damage: 250, createdAt: new Date().toISOString() }
-      ]
+      ],
+      totalGuildDamage: 650,
+      activeRaidersCount: 3
     });
   }
 }
@@ -111,7 +117,13 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return NextResponse.json({ success: true, damage, newHp, isDefeated });
+      return NextResponse.json({
+        success: true,
+        damage,
+        newHp,
+        isDefeated,
+        message: isDefeated ? "VICTORY! The Boss has been slain!" : `Boss hit for ${damage} DAMAGE!`
+      });
     }
 
     return NextResponse.json({ success: true, damage: 150, newHp: 1000 });
