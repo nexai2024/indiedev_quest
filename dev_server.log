@@ -1,0 +1,266 @@
+
+> codebox@0.1.0 dev
+> next dev
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ⚠ `images.domains` is deprecated in favor of `images.remotePatterns`. Please update next.config.ts to protect your application from malicious users.
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3000
+   - Network:       http://192.168.0.2:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+ ✓ Ready in 1867ms
+Clerk: Refreshing the session token resulted in an infinite redirect loop. This usually means that your Clerk instance keys do not match - make sure to copy the correct publishable and secret keys from the Clerk dashboard.
+ ✓ Compiled in 60ms
+ ○ Compiling / ...
+ GET / 200 in 7.1s (compile: 6.3s, proxy.ts: 61ms, render: 786ms)
+ ⚠ The "images.domains" configuration is deprecated. Please use "images.remotePatterns" configuration instead.
+ ⚠ The requested resource "/hero.gif" is an animated image so it will not be optimized. Consider adding the "unoptimized" property to the <Image>.
+ POST / 200 in 143ms (compile: 24ms, proxy.ts: 48ms, render: 71ms)
+ GET /dashboard 200 in 1758ms (compile: 1594ms, proxy.ts: 5ms, render: 158ms)
+ POST /dashboard 200 in 58ms (compile: 25ms, proxy.ts: 8ms, render: 24ms)
+User POST route error: Error: Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware(). Please ensure the following:
+- Your Middleware exists at ./middleware.(ts|js)
+- clerkMiddleware() is used in your Next.js Middleware.
+- Your Middleware matcher is configured to match this route or page.
+- If you are using the src directory, make sure the Middleware file is inside of it.
+
+For more details, see https://clerk.com/err/auth-middleware
+
+    at async POST (app/api/user/route.ts:9:18)
+   7 | export async function POST(req: NextRequest) {
+   8 |   try {
+>  9 |     const user = await currentUser();
+     |                  ^
+  10 |     if (!user || !user.primaryEmailAddress?.emailAddress) {
+  11 |       return NextResponse.json({
+  12 |         id: 1,
+ GET /api/user 200 in 2.9s (compile: 2.4s, proxy.ts: 5ms, render: 438ms)
+ ○ Compiling /api/user ...
+Guild party GET error: Error: Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware(). Please ensure the following:
+- Your Middleware exists at ./middleware.(ts|js)
+- clerkMiddleware() is used in your Next.js Middleware.
+- Your Middleware matcher is configured to match this route or page.
+- If you are using the src directory, make sure the Middleware file is inside of it.
+
+For more details, see https://clerk.com/err/auth-middleware
+
+    at async GET (app/api/guild/party/route.ts:9:18)
+   7 | export async function GET(req: NextRequest) {
+   8 |   try {
+>  9 |     const user = await currentUser();
+     |                  ^
+  10 |     const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+  11 |
+  12 |     const userRecords = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));
+ GET /api/guild/party 200 in 1040ms (compile: 669ms, proxy.ts: 6ms, render: 365ms)
+ GET /quests 200 in 2.7s (compile: 2.3s, proxy.ts: 5ms, render: 347ms)
+ POST /quests 200 in 59ms (compile: 16ms, proxy.ts: 14ms, render: 29ms)
+GET quests error: Error: Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware(). Please ensure the following:
+- Your Middleware exists at ./middleware.(ts|js)
+- clerkMiddleware() is used in your Next.js Middleware.
+- Your Middleware matcher is configured to match this route or page.
+- If you are using the src directory, make sure the Middleware file is inside of it.
+
+For more details, see https://clerk.com/err/auth-middleware
+
+    at async GET (app/api/quests/route.ts:62:18)
+  60 | export async function GET(req: NextRequest) {
+  61 |   try {
+> 62 |     const user = await currentUser();
+     |                  ^
+  63 |     const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+  64 |
+  65 |     // Ensure quest catalog exists
+ GET /api/quests 200 in 549ms (compile: 399ms, proxy.ts: 6ms, render: 144ms)
+ GET /raids 200 in 1641ms (compile: 1415ms, proxy.ts: 4ms, render: 222ms)
+ POST /raids 200 in 50ms (compile: 24ms, proxy.ts: 11ms, render: 15ms)
+GET raids error: Error: Failed query: select "id", "bossName", "description", "maxHp", "currentHp", "goldReward", "xpReward", "status" from "bossRaids" where "bossRaids"."status" = $1
+params: ACTIVE
+    at async GET (app/api/raids/route.ts:9:17)
+   7 | export async function GET(req: NextRequest) {
+   8 |   try {
+>  9 |     let raids = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.status, "ACTIVE"));
+     |                 ^
+  10 |
+  11 |     if (raids.length === 0) {
+  12 |       const defaultRaid = await db {
+  query: 'select "id", "bossName", "description", "maxHp", "currentHp", "goldReward", "xpReward", "status" from "bossRaids" where "bossRaids"."status" = $1',
+  params: [Array],
+  [cause]: Error [NeonDbError]: Error connecting to database: TypeError: fetch failed
+      at async GET (app/api/raids/route.ts:9:17)
+     7 | export async function GET(req: NextRequest) {
+     8 |   try {
+  >  9 |     let raids = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.status, "ACTIVE"));
+       |                 ^
+    10 |
+    11 |     if (raids.length === 0) {
+    12 |       const defaultRaid = await db {
+    severity: undefined,
+    code: undefined,
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: undefined,
+    line: undefined,
+    routine: undefined,
+    sourceError: TypeError: fetch failed
+        at async GET (app/api/raids/route.ts:9:17)
+       7 | export async function GET(req: NextRequest) {
+       8 |   try {
+    >  9 |     let raids = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.status, "ACTIVE"));
+         |                 ^
+      10 |
+      11 |     if (raids.length === 0) {
+      12 |       const defaultRaid = await db {
+      [cause]: AggregateError:
+          at ignore-listed frames {
+        code: 'ECONNREFUSED'
+      }
+    }
+  }
+}
+ GET /api/raids 200 in 1339ms (compile: 553ms, proxy.ts: 6ms, render: 780ms)
+ ✓ Compiled in 136ms
+ ✓ Compiled in 82ms
+ ✓ Compiled in 3.2s
+ GET / 200 in 2.2s (compile: 870ms, proxy.ts: 133ms, render: 1230ms)
+ POST / 200 in 38ms (compile: 7ms, proxy.ts: 10ms, render: 21ms)
+ GET /dashboard 200 in 954ms (compile: 546ms, proxy.ts: 8ms, render: 400ms)
+User POST route error: Error: Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware(). Please ensure the following:
+- Your Middleware exists at ./middleware.(ts|js)
+- clerkMiddleware() is used in your Next.js Middleware.
+- Your Middleware matcher is configured to match this route or page.
+- If you are using the src directory, make sure the Middleware file is inside of it.
+
+For more details, see https://clerk.com/err/auth-middleware
+
+    at async POST (app/api/user/route.ts:9:18)
+   7 | export async function POST(req: NextRequest) {
+   8 |   try {
+>  9 |     const user = await currentUser();
+     |                  ^
+  10 |     if (!user || !user.primaryEmailAddress?.emailAddress) {
+  11 |       return NextResponse.json({
+  12 |         id: 1,
+ GET /api/user 200 in 369ms (compile: 121ms, proxy.ts: 10ms, render: 237ms)
+ POST /dashboard 200 in 373ms (compile: 132ms, proxy.ts: 11ms, render: 230ms)
+Guild party GET error: Error: Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware(). Please ensure the following:
+- Your Middleware exists at ./middleware.(ts|js)
+- clerkMiddleware() is used in your Next.js Middleware.
+- Your Middleware matcher is configured to match this route or page.
+- If you are using the src directory, make sure the Middleware file is inside of it.
+
+For more details, see https://clerk.com/err/auth-middleware
+
+    at async GET (app/api/guild/party/route.ts:9:18)
+   7 | export async function GET(req: NextRequest) {
+   8 |   try {
+>  9 |     const user = await currentUser();
+     |                  ^
+  10 |     const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+  11 |
+  12 |     const userRecords = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));
+ GET /api/guild/party 200 in 198ms (compile: 38ms, proxy.ts: 5ms, render: 155ms)
+GET quests error: Error: Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware(). Please ensure the following:
+- Your Middleware exists at ./middleware.(ts|js)
+- clerkMiddleware() is used in your Next.js Middleware.
+- Your Middleware matcher is configured to match this route or page.
+- If you are using the src directory, make sure the Middleware file is inside of it.
+
+For more details, see https://clerk.com/err/auth-middleware
+
+    at async GET (app/api/quests/route.ts:62:18)
+  60 | export async function GET(req: NextRequest) {
+  61 |   try {
+> 62 |     const user = await currentUser();
+     |                  ^
+  63 |     const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+  64 |
+  65 |     // Ensure quest catalog exists
+ GET /api/quests 200 in 206ms (compile: 35ms, proxy.ts: 4ms, render: 166ms)
+ GET /quests 200 in 603ms (compile: 268ms, proxy.ts: 4ms, render: 331ms)
+GET quests error: Error: Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware(). Please ensure the following:
+- Your Middleware exists at ./middleware.(ts|js)
+- clerkMiddleware() is used in your Next.js Middleware.
+- Your Middleware matcher is configured to match this route or page.
+- If you are using the src directory, make sure the Middleware file is inside of it.
+
+For more details, see https://clerk.com/err/auth-middleware
+
+    at async GET (app/api/quests/route.ts:62:18)
+  60 | export async function GET(req: NextRequest) {
+  61 |   try {
+> 62 |     const user = await currentUser();
+     |                  ^
+  63 |     const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+  64 |
+  65 |     // Ensure quest catalog exists
+ GET /api/quests 200 in 231ms (compile: 5ms, proxy.ts: 9ms, render: 216ms)
+ POST /quests 200 in 25ms (compile: 8ms, proxy.ts: 9ms, render: 9ms)
+ GET /raids 200 in 460ms (compile: 238ms, proxy.ts: 4ms, render: 218ms)
+GET raids error: Error: Failed query: select "id", "bossName", "description", "maxHp", "currentHp", "goldReward", "xpReward", "status" from "bossRaids" where "bossRaids"."status" = $1
+params: ACTIVE
+    at async GET (app/api/raids/route.ts:9:17)
+   7 | export async function GET(req: NextRequest) {
+   8 |   try {
+>  9 |     let raids = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.status, "ACTIVE"));
+     |                 ^
+  10 |
+  11 |     if (raids.length === 0) {
+  12 |       const defaultRaid = await db {
+  query: 'select "id", "bossName", "description", "maxHp", "currentHp", "goldReward", "xpReward", "status" from "bossRaids" where "bossRaids"."status" = $1',
+  params: [Array],
+  [cause]: Error [NeonDbError]: Error connecting to database: TypeError: fetch failed
+      at async GET (app/api/raids/route.ts:9:17)
+     7 | export async function GET(req: NextRequest) {
+     8 |   try {
+  >  9 |     let raids = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.status, "ACTIVE"));
+       |                 ^
+    10 |
+    11 |     if (raids.length === 0) {
+    12 |       const defaultRaid = await db {
+    severity: undefined,
+    code: undefined,
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: undefined,
+    line: undefined,
+    routine: undefined,
+    sourceError: TypeError: fetch failed
+        at async GET (app/api/raids/route.ts:9:17)
+       7 | export async function GET(req: NextRequest) {
+       8 |   try {
+    >  9 |     let raids = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.status, "ACTIVE"));
+         |                 ^
+      10 |
+      11 |     if (raids.length === 0) {
+      12 |       const defaultRaid = await db {
+      [cause]: AggregateError:
+          at ignore-listed frames {
+        code: 'ECONNREFUSED'
+      }
+    }
+  }
+}
+ GET /api/raids 200 in 610ms (compile: 49ms, proxy.ts: 5ms, render: 556ms)
+ POST /raids 200 in 601ms (compile: 14ms, proxy.ts: 66ms, render: 520ms)
