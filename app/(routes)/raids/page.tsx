@@ -34,6 +34,7 @@ export default function RaidsPage() {
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [totalGuildDamage, setTotalGuildDamage] = useState(0);
   const [activeRaidersCount, setActiveRaidersCount] = useState(1);
+  const [sseConnected, setSseConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAttackOpen, setIsAttackOpen] = useState(false);
   const [proofUrl, setProofUrl] = useState("");
@@ -41,10 +42,24 @@ export default function RaidsPage() {
 
   useEffect(() => {
     fetchRaidData();
-    const interval = setInterval(() => {
-      fetchRaidData();
-    }, 3000);
-    return () => clearInterval(interval);
+
+    // Mount SSE Live Stream
+    const eventSource = new EventSource("/api/raids/stream");
+    eventSource.onopen = () => setSseConnected(true);
+    eventSource.onmessage = (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.type === "RAID_STATUS") {
+          fetchRaidData();
+        }
+      } catch (err) {
+        console.error("Raid SSE parse error", err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   const fetchRaidData = async () => {
@@ -92,13 +107,13 @@ export default function RaidsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-neutral-900 via-neutral-900 to-red-950/40 p-8 rounded-2xl border border-red-500/20 shadow-xl">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-game mb-2">
-            <Swords className="w-4 h-4 text-red-400 animate-pulse" /> NET NEW FEATURE 1: REAL-TIME CO-OP GUILD BOSS RAIDS
+            <Swords className="w-4 h-4 text-red-400 animate-pulse" /> NET NEW FEATURE 1: REAL-TIME SSE CO-OP GUILD BOSS RAIDS
           </div>
           <h1 className="text-4xl md:text-5xl font-game font-bold tracking-wide text-white">
             INTERACTIVE BOSS RAID
           </h1>
           <p className="text-gray-400 mt-1 font-game text-xl">
-            Team up with your Guild Cohort in live real-time damage streams to defeat timed Bosses!
+            Team up in SSE live damage streams (Status: {sseConnected ? "LIVE STREAM ACTIVE ⚡" : "CONNECTING..."}) to defeat Bosses!
           </p>
         </div>
 

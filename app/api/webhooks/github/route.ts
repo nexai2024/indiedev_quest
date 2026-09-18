@@ -34,16 +34,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload JSON" }, { status: 400 });
     }
 
-    const sender = payload.sender?.login;
-    const repoUrl = payload.repository?.html_url;
-    const commitMsg = payload.head_commit?.message || payload.commits?.[0]?.message;
-    const userEmail = payload.pusher?.email || payload.head_commit?.author?.email;
+    const sender = payload.sender?.login || "github-builder";
+    const repoUrl = payload.repository?.html_url || "https://github.com/indiedev-quest/app";
+
+    // Support both push commits and pull_request actions
+    let commitMsg = payload.head_commit?.message || payload.commits?.[0]?.message;
+    if (event === "pull_request") {
+      commitMsg = `PR #${payload.number}: ${payload.pull_request?.title || "Pull Request Submitted"}`;
+    }
+
+    const userEmail = payload.pusher?.email || payload.head_commit?.author?.email || payload.pull_request?.user?.email || "demo@indiedev.quest";
 
     if (!userEmail || !repoUrl) {
       return NextResponse.json({ error: "Missing user email or repo URL in webhook payload" }, { status: 400 });
     }
 
-    // Auto-detect matching quest from commit message or event
+    // Auto-detect matching quest from commit message or PR title
     let targetQuestId = "main_ship_mvp";
     if (commitMsg && (commitMsg.toLowerCase().includes("auth") || commitMsg.toLowerCase().includes("drizzle"))) {
       targetQuestId = "side_nextauth_drizzle";
@@ -51,15 +57,15 @@ export async function POST(req: NextRequest) {
       targetQuestId = "side_stripe_checkout";
     }
 
-    // 1. Create proof submission automatically from GitHub Push
+    // 1. Create proof submission automatically from GitHub Push or PR
     const newSubmission = await db
       .insert(submissionsTable)
       .values({
         userId: userEmail,
-        userName: sender || "GitHub Builder",
-        questTitle: `GitHub Push Auto-Validation (${targetQuestId})`,
+        userName: sender,
+        questTitle: `GitHub ${event === 'pull_request' ? 'PR' : 'Push'} Auto-Validation (${targetQuestId})`,
         proofUrl: repoUrl,
-        notes: `Automated GitHub Push: "${commitMsg || 'Code push'}"`,
+        notes: `Automated GitHub Event [${event}]: "${commitMsg || 'Code change'}"`,
         isApproved: true,
         reviewNotes: "Automated verification by GitHub Webhook Engine"
       })
@@ -117,7 +123,7 @@ export async function POST(req: NextRequest) {
       event,
       questId: targetQuestId,
       submission: newSubmission[0],
-      message: "GitHub webhook processed and quest auto-validated!"
+      message: `GitHub ${event} webhook processed and quest auto-validated!`
     });
   } catch (error) {
     console.error("GitHub webhook error:", error);

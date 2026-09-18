@@ -21,6 +21,7 @@ export default function TavernPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [terminalCmd, setTerminalCmd] = useState("");
+  const [sseConnected, setSseConnected] = useState(false);
   const [terminalHistory, setTerminalHistory] = useState<string[]>([
     "indiedev.quest RPG Terminal v1.0 initialized.",
     "Type '/quest', '/stats', '/cast-spell', '/party', or '/gold'..."
@@ -29,10 +30,24 @@ export default function TavernPage() {
 
   useEffect(() => {
     fetchTavernMessages();
-    const interval = setInterval(() => {
-      fetchTavernMessages();
-    }, 3000);
-    return () => clearInterval(interval);
+
+    // Initialize Real-time Server-Sent Events (SSE) Stream
+    const eventSource = new EventSource("/api/tavern/stream");
+    eventSource.onopen = () => setSseConnected(true);
+    eventSource.onmessage = (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.type === "TAVERN_PING") {
+          fetchTavernMessages();
+        }
+      } catch (err) {
+        console.error("SSE parse error", err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   const fetchTavernMessages = async () => {
@@ -86,13 +101,13 @@ export default function TavernPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-neutral-900 via-neutral-900 to-amber-950/40 p-8 rounded-2xl border border-amber-500/20 shadow-xl">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-game mb-2">
-            <Radio className="w-4 h-4 text-amber-400 animate-pulse" /> NET NEW FEATURE 3: REAL-TIME GUILD TAVERN & RPG CLI TERMINAL
+            <Radio className="w-4 h-4 text-amber-400 animate-pulse" /> NET NEW FEATURE 3: REAL-TIME SSE TAVERN & RPG CLI TERMINAL
           </div>
           <h1 className="text-4xl md:text-5xl font-game font-bold tracking-wide text-white">
             THE TAVERN & TERMINAL
           </h1>
           <p className="text-gray-400 mt-1 font-game text-xl">
-            Live cohort chat stream, lo-fi tavern soundscapes, and an interactive CLI for command-line indie hackers.
+            Live cohort chat stream (SSE Status: {sseConnected ? "ONLINE ⚡" : "CONNECTING..."}), lo-fi soundscapes, and CLI macros.
           </p>
         </div>
 
