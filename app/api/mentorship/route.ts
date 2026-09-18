@@ -34,13 +34,15 @@ const DEFAULT_MENTORS = [
 export async function GET(req: NextRequest) {
   try {
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    const userEmail = user?.primaryEmailAddress?.emailAddress;
 
-    const userBookings = await db
-      .select()
-      .from(mentorshipsTable)
-      .where(eq(mentorshipsTable.menteeId, userEmail))
-      .orderBy(desc(mentorshipsTable.createdAt));
+    const userBookings = userEmail
+      ? await db
+          .select()
+          .from(mentorshipsTable)
+          .where(eq(mentorshipsTable.menteeId, userEmail))
+          .orderBy(desc(mentorshipsTable.createdAt))
+      : [];
 
     return NextResponse.json({
       mentors: DEFAULT_MENTORS,
@@ -57,10 +59,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { mentorId, mentorName, topic, scheduledAt, costInGold = 100 } = await req.json();
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
-    const userName = user?.fullName || user?.firstName || "Indie Builder";
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { mentorId, mentorName, topic, scheduledAt, costInGold = 100 } = await req.json();
+    const userEmail = user.primaryEmailAddress.emailAddress;
+    const userName = user.fullName || user.firstName || "Indie Builder";
 
     // Deduct gold from user
     const userRecords = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));

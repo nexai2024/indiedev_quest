@@ -73,12 +73,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await currentUser();
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const action = body.action || "CREATE"; // "CREATE" | "PURCHASE"
 
-    const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
-    const userName = user?.fullName || user?.firstName || "Indie Hacker";
+    const userEmail = user.primaryEmailAddress.emailAddress;
+    const userName = user.fullName || user.firstName || "Indie Hacker";
 
     if (action === "CREATE") {
       const { title, description, priceInCents = 1900, priceInGold = 100, assetUrl, category = "Templates" } = body;

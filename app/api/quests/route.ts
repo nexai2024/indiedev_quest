@@ -60,7 +60,7 @@ const DEFAULT_QUEST_CATALOG = [
 export async function GET(req: NextRequest) {
   try {
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    const userEmail = user?.primaryEmailAddress?.emailAddress;
 
     // Ensure quest catalog exists
     let allQuests = await db.select().from(questsTable);
@@ -72,7 +72,9 @@ export async function GET(req: NextRequest) {
     }
 
     // User's quests
-    const userQuests = await db.select().from(userQuestsTable).where(eq(userQuestsTable.userId, userEmail));
+    const userQuests = userEmail
+      ? await db.select().from(userQuestsTable).where(eq(userQuestsTable.userId, userEmail))
+      : [];
 
     // Merge quest details
     const merged = allQuests.map((q) => {
@@ -101,9 +103,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { questId, action } = await req.json(); // action: "ACCEPT" | "ABANDON"
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { questId, action } = await req.json(); // action: "ACCEPT" | "ABANDON"
+    const userEmail = user.primaryEmailAddress.emailAddress;
 
     const existing = await db
       .select()

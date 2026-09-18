@@ -18,12 +18,12 @@ const SKILL_NODES = [
 export async function GET(req: NextRequest) {
   try {
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    const userEmail = user?.primaryEmailAddress?.emailAddress;
 
-    const userRecords = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));
+    const userRecords = userEmail ? await db.select().from(usersTable).where(eq(usersTable.email, userEmail)) : [];
     const u = userRecords[0];
 
-    const unlocked = await db.select().from(userSkillsTable).where(eq(userSkillsTable.userId, userEmail));
+    const unlocked = userEmail ? await db.select().from(userSkillsTable).where(eq(userSkillsTable.userId, userEmail)) : [];
     const unlockedIds = unlocked.map((s) => s.skillId);
 
     return NextResponse.json({
@@ -45,9 +45,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { skillId } = await req.json();
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { skillId } = await req.json();
+    const userEmail = user.primaryEmailAddress.emailAddress;
 
     const userRecords = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));
     if (userRecords.length > 0) {

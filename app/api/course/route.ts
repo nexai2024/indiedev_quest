@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const courseId = searchParams.get("courseid");
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    const userEmail = user?.primaryEmailAddress?.emailAddress;
 
     if (courseId && courseId !== "enrolled") {
       let result = await db
@@ -65,31 +65,35 @@ export async function GET(req: NextRequest) {
         chapterResult = DEFAULT_CHAPTERS as any;
       }
 
-      const enrolledCourse = await db
-        .select()
-        .from(EnrolledCourseTable)
-        .where(
-          and(
-            eq(EnrolledCourseTable.CourseId, Number(courseId)),
-            eq(EnrolledCourseTable.userId, userEmail)
-          )
-        );
+      const enrolledCourse = userEmail
+        ? await db
+            .select()
+            .from(EnrolledCourseTable)
+            .where(
+              and(
+                eq(EnrolledCourseTable.CourseId, Number(courseId)),
+                eq(EnrolledCourseTable.userId, userEmail)
+              )
+            )
+        : [];
 
       const isEnrolledCourse = enrolledCourse.length > 0;
 
-      const completeExercise = await db
-        .select()
-        .from(CompleteExerciseTable)
-        .where(
-          and(
-            eq(CompleteExerciseTable.courseId, Number(courseId)),
-            eq(CompleteExerciseTable.userId, userEmail)
-          )
-        )
-        .orderBy(
-          desc(CompleteExerciseTable.courseId),
-          desc(CompleteExerciseTable.exerciseId)
-        );
+      const completeExercise = userEmail
+        ? await db
+            .select()
+            .from(CompleteExerciseTable)
+            .where(
+              and(
+                eq(CompleteExerciseTable.courseId, Number(courseId)),
+                eq(CompleteExerciseTable.userId, userEmail)
+              )
+            )
+            .orderBy(
+              desc(CompleteExerciseTable.courseId),
+              desc(CompleteExerciseTable.exerciseId)
+            )
+        : [];
 
       return NextResponse.json({
         ...result[0],
@@ -99,6 +103,10 @@ export async function GET(req: NextRequest) {
         completeExercise: completeExercise
       });
     } else if (courseId === "enrolled") {
+      if (!userEmail) {
+        return NextResponse.json([]);
+      }
+
       const enrolledCourses = await db
         .select()
         .from(EnrolledCourseTable)

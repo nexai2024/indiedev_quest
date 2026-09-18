@@ -8,8 +8,11 @@ export async function POST(req: NextRequest) {
   try {
     const { productId, type = "PRODUCT_PURCHASE" } = await req.json();
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
-    const userName = user?.fullName || user?.firstName || "Indie Builder";
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+    const userEmail = user.primaryEmailAddress.emailAddress;
+    const userName = user.fullName || user.firstName || "Indie Builder";
 
     if (type === "PRODUCT_PURCHASE") {
       const prodList = await db.select().from(productsTable).where(eq(productsTable.id, productId));

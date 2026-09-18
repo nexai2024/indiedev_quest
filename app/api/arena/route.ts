@@ -37,9 +37,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { challengeId, code } = await req.json();
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { challengeId, code } = await req.json();
+    const userEmail = user.primaryEmailAddress.emailAddress;
 
     const challenge = ARENA_CHALLENGES.find((c) => c.id === challengeId) || ARENA_CHALLENGES[0];
 

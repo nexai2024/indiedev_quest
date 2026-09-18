@@ -7,7 +7,10 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+    const userEmail = user.primaryEmailAddress.emailAddress;
 
     const { action = "ONBOARD" } = await req.json();
 

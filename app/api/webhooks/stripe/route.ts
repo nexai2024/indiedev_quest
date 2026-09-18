@@ -10,32 +10,34 @@ export async function POST(req: NextRequest) {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const signature = req.headers.get("stripe-signature");
 
-    if (webhookSecret) {
-      if (!signature) {
-        return NextResponse.json({ error: "Missing Stripe signature header" }, { status: 401 });
-      }
+    if (!webhookSecret) {
+      return NextResponse.json({ error: "Stripe webhook secret not configured" }, { status: 500 });
+    }
 
-      // Verify Stripe signature format: t=timestamp,v1=signature
-      const sigItems = signature.split(",").reduce((acc: any, item) => {
-        const [k, v] = item.split("=");
-        if (k && v) acc[k] = v;
-        return acc;
-      }, {});
+    if (!signature) {
+      return NextResponse.json({ error: "Missing Stripe signature header" }, { status: 401 });
+    }
 
-      if (!sigItems.t || !sigItems.v1) {
-        return NextResponse.json({ error: "Invalid Stripe signature format" }, { status: 401 });
-      }
+    // Verify Stripe signature format: t=timestamp,v1=signature
+    const sigItems = signature.split(",").reduce((acc: any, item) => {
+      const [k, v] = item.split("=");
+      if (k && v) acc[k] = v;
+      return acc;
+    }, {});
 
-      const signedPayload = `${sigItems.t}.${rawBody}`;
-      const hmac = crypto.createHmac("sha256", webhookSecret);
-      const expectedSig = hmac.update(signedPayload).digest("hex");
+    if (!sigItems.t || !sigItems.v1) {
+      return NextResponse.json({ error: "Invalid Stripe signature format" }, { status: 401 });
+    }
 
-      const sigBuf = Buffer.from(sigItems.v1);
-      const expectedBuf = Buffer.from(expectedSig);
+    const signedPayload = `${sigItems.t}.${rawBody}`;
+    const hmac = crypto.createHmac("sha256", webhookSecret);
+    const expectedSig = hmac.update(signedPayload).digest("hex");
 
-      if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
-        return NextResponse.json({ error: "Stripe signature verification failed" }, { status: 401 });
-      }
+    const sigBuf = Buffer.from(sigItems.v1);
+    const expectedBuf = Buffer.from(expectedSig);
+
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+      return NextResponse.json({ error: "Stripe signature verification failed" }, { status: 401 });
     }
 
     let event: any;

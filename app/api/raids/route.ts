@@ -65,10 +65,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { raidId, proofUrl, attackType = "SPELL" } = await req.json();
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
-    const userName = user?.fullName || user?.firstName || "Indie Hero";
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const raidId = body.raidId;
+    const proofUrl = body.proofUrl;
+    const attackType = body.attackType || "SPELL";
+    const userEmail = user.primaryEmailAddress.emailAddress;
+    const userName = user.fullName || user.firstName || "Indie Builder";
 
     const damage = attackType === "CRITICAL" ? 250 : 150;
 
