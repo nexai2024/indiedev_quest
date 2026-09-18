@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Flame, Swords, ShieldAlert, Zap, Award, Coins, Sparkles, Crosshair, Users, Activity } from "lucide-react";
+import { Swords, ShieldAlert, Coins, Crosshair, Users, Activity } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
@@ -32,6 +32,9 @@ interface Contribution {
 export default function RaidsPage() {
   const [raid, setRaid] = useState<RaidInfo | null>(null);
   const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [totalGuildDamage, setTotalGuildDamage] = useState(0);
+  const [activeRaidersCount, setActiveRaidersCount] = useState(1);
+  const [sseConnected, setSseConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAttackOpen, setIsAttackOpen] = useState(false);
   const [proofUrl, setProofUrl] = useState("");
@@ -39,6 +42,24 @@ export default function RaidsPage() {
 
   useEffect(() => {
     fetchRaidData();
+
+    // Mount SSE Live Stream
+    const eventSource = new EventSource("/api/raids/stream");
+    eventSource.onopen = () => setSseConnected(true);
+    eventSource.onmessage = (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.type === "RAID_STATUS") {
+          fetchRaidData();
+        }
+      } catch (err) {
+        console.error("Raid SSE parse error", err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   const fetchRaidData = async () => {
@@ -46,6 +67,8 @@ export default function RaidsPage() {
       const res = await axios.get("/api/raids");
       setRaid(res.data.raid);
       setContributions(res.data.contributions || []);
+      setTotalGuildDamage(res.data.totalGuildDamage || 0);
+      setActiveRaidersCount(res.data.activeRaidersCount || 1);
     } catch (err) {
       console.error(err);
     } finally {
@@ -64,7 +87,7 @@ export default function RaidsPage() {
       });
 
       if (res.data.success) {
-        toast.success(`⚔️ CRITICAL STRIKE! Dealt -${res.data.damage} HP to ${raid.bossName}! Earned Gold & XP!`);
+        toast.success(`⚔️ ${res.data.message || `Hit for -${res.data.damage} HP!`}`);
         setIsAttackOpen(false);
         setProofUrl("");
         fetchRaidData();
@@ -84,14 +107,24 @@ export default function RaidsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-neutral-900 via-neutral-900 to-red-950/40 p-8 rounded-2xl border border-red-500/20 shadow-xl">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-game mb-2">
-            <Swords className="w-4 h-4 text-red-400 animate-pulse" /> NET NEW FEATURE 1: CO-OP GUILD BOSS RAIDS
+            <Swords className="w-4 h-4 text-red-400 animate-pulse" /> NET NEW FEATURE 1: REAL-TIME SSE CO-OP GUILD BOSS RAIDS
           </div>
           <h1 className="text-4xl md:text-5xl font-game font-bold tracking-wide text-white">
             INTERACTIVE BOSS RAID
           </h1>
           <p className="text-gray-400 mt-1 font-game text-xl">
-            Team up with your Guild Cohort to defeat timed Bosses by executing clean code & completing tasks!
+            Team up in SSE live damage streams (Status: {sseConnected ? "LIVE STREAM ACTIVE ⚡" : "CONNECTING..."}) to defeat Bosses!
           </p>
+        </div>
+
+        <div className="flex items-center gap-3 font-mono text-xs bg-neutral-900 p-3 rounded-xl border border-neutral-800">
+          <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+            <Users className="w-4 h-4" /> {activeRaidersCount} ACTIVE RAIDERS
+          </div>
+          <div className="text-gray-500">|</div>
+          <div className="text-yellow-400 font-bold">
+            ⚡ {totalGuildDamage} TOTAL GUILD DAMAGE
+          </div>
         </div>
       </div>
 
@@ -150,7 +183,7 @@ export default function RaidsPage() {
       {/* Combat Activity Log */}
       <Card className="bg-neutral-900 border-neutral-800 p-6 space-y-4">
         <h3 className="font-game text-2xl text-yellow-400 flex items-center gap-2">
-          <Activity className="w-5 h-5" /> REAL-TIME BATTLE DAMAGE LOG
+          <Activity className="w-5 h-5" /> REAL-TIME BATTLE DAMAGE STREAM
         </h3>
         <div className="space-y-2 max-h-60 overflow-y-auto font-mono text-xs">
           {contributions.map((c) => (
