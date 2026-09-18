@@ -38,7 +38,10 @@ export async function POST(req: NextRequest) {
   try {
     const { characterClass, primaryGoal, skillLevel } = await req.json();
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userEmail = user.primaryEmailAddress.emailAddress;
 
     // 1. Ensure default party exists
     let parties = await db.select().from(partiesTable);

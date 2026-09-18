@@ -6,7 +6,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await currentUser();
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     const { submissionId, isApproved, reviewNotes, xpReward = 200, goldReward = 100 } = await req.json();
+    if (!submissionId || typeof isApproved !== "boolean") {
+      return NextResponse.json({ success: false, message: "Invalid parameters" }, { status: 400 });
+    }
 
     // 1. Update submission approval status
     const subList = await db
@@ -70,6 +78,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, isApproved });
   } catch (error) {
     console.error("Submission review POST error:", error);
-    return NextResponse.json({ success: true, isApproved: true });
+    return NextResponse.json({ success: false, message: "Review submission failed" }, { status: 500 });
   }
 }

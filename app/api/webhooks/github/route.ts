@@ -11,20 +11,22 @@ export async function POST(req: NextRequest) {
     const githubSecret = process.env.GITHUB_WEBHOOK_SECRET;
     const signature = req.headers.get("x-hub-signature-256");
 
-    if (githubSecret) {
-      if (!signature) {
-        return NextResponse.json({ error: "Missing GitHub signature header" }, { status: 401 });
-      }
+    if (!githubSecret) {
+      return NextResponse.json({ error: "GitHub webhook secret not configured" }, { status: 500 });
+    }
 
-      const hmac = crypto.createHmac("sha256", githubSecret);
-      const digest = "sha256=" + hmac.update(rawBody).digest("hex");
+    if (!signature) {
+      return NextResponse.json({ error: "Missing GitHub signature header" }, { status: 401 });
+    }
 
-      const sigBuf = Buffer.from(signature);
-      const digestBuf = Buffer.from(digest);
+    const hmac = crypto.createHmac("sha256", githubSecret);
+    const digest = "sha256=" + hmac.update(rawBody).digest("hex");
 
-      if (sigBuf.length !== digestBuf.length || !crypto.timingSafeEqual(sigBuf, digestBuf)) {
-        return NextResponse.json({ error: "Invalid GitHub webhook signature" }, { status: 401 });
-      }
+    const sigBuf = Buffer.from(signature);
+    const digestBuf = Buffer.from(digest);
+
+    if (sigBuf.length !== digestBuf.length || !crypto.timingSafeEqual(sigBuf, digestBuf)) {
+      return NextResponse.json({ error: "Invalid GitHub webhook signature" }, { status: 401 });
     }
 
     let payload: any;

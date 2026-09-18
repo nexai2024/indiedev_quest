@@ -4,14 +4,17 @@ import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req:NextRequest) {
-    const {courseId} = await req.json();
-    const user=await currentUser();
-    const result=await db.insert(EnrolledCourseTable).values({
-        CourseId: courseId??0,
-        userId: user?.primaryEmailAddress?.emailAddress??'',
-        xpEarned:0,
-    }).returning()
+    const user = await currentUser();
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    return NextResponse.json(result)
-    
+    const { courseId } = await req.json();
+    const result = await db.insert(EnrolledCourseTable).values({
+        CourseId: courseId ?? 0,
+        userId: user.primaryEmailAddress.emailAddress,
+        xpEarned: 0,
+    }).returning();
+
+    return NextResponse.json(result);
 }

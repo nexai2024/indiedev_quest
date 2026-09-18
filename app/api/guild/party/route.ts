@@ -7,7 +7,19 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   try {
     const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
+    const userEmail = user?.primaryEmailAddress?.emailAddress;
+    if (!userEmail) {
+      return NextResponse.json({
+        id: 1,
+        name: "The Code Alchemists",
+        description: "A guild cohort of ambitious indie builders mastering full-stack arcana.",
+        mentorName: "Guildmaster Sarah",
+        mentorId: "mentor_sarah",
+        avatar: "/hero.gif",
+        createdAt: new Date(),
+        members: []
+      });
+    }
 
     const userRecords = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));
     const userObj = userRecords[0];

@@ -49,15 +49,19 @@ export async function POST(req: NextRequest) {
   let proofUrlInput = "";
   let notesInput = "";
   try {
+    const user = await currentUser();
+    if (!user || !user.primaryEmailAddress?.emailAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const questId = body.questId;
     const questTitle = body.questTitle;
     proofUrlInput = body.proofUrl || "";
     notesInput = body.notes || "";
 
-    const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "demo@indiedev.quest";
-    const userName = user?.fullName || user?.firstName || "Indie Builder";
+    const userEmail = user.primaryEmailAddress.emailAddress;
+    const userName = user.fullName || user.firstName || "Indie Builder";
 
     const newSubmission = await db
       .insert(submissionsTable)
@@ -81,12 +85,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(newSubmission[0]);
   } catch (error) {
     console.error("POST submission error:", error);
-    return NextResponse.json({
-      id: Date.now(),
-      questTitle: "Quest Submission",
-      proofUrl: proofUrlInput,
-      notes: notesInput,
-      isApproved: false
-    });
+    return NextResponse.json({ error: "Failed to create submission" }, { status: 500 });
   }
 }
