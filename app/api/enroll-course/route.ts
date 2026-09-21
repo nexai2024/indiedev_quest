@@ -1,11 +1,13 @@
 import { db } from "@/config/db";
 import { EnrolledCourseTable } from "@/config/schema";
-import { currentUser } from "@clerk/nextjs/server";
+import { requireCharacter } from "@/lib/character";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req:NextRequest) {
-    const user = await currentUser();
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
+    const authed = await requireCharacter();
+    if (!authed.ok) return authed.error;
+    const user = authed.user;
+    if (!user.primaryEmailAddress?.emailAddress) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

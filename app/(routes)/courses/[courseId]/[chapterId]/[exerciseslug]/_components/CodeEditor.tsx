@@ -6,10 +6,9 @@ import {
   SandpackPreview,
   useSandpack,
 } from "@codesandbox/sandpack-react";
-import SplitterLayout from 'react-splitter-layout';
-import 'react-splitter-layout/lib/index.css';
 import { courseExercise } from '../page';
 import { Button } from '@/components/ui/button';
+import { ResizableGroup, ResizableHandle, ResizablePanel } from '@/components/ui/resizable';
 import { amethyst } from "@codesandbox/sandpack-themes";
 import { useParams } from 'next/navigation';
 import axios from 'axios';
@@ -24,7 +23,7 @@ const CodeEditorChildren=({onCompleteExercise,IsCompleted}: any)=>{
 
   const {sandpack} =  useSandpack();
   return(
-    <div className='font-game absolute bottom-40 flex gap-5 right-3'>
+    <div className='font-game absolute bottom-3 z-10 flex gap-5 right-3'>
       <Button variant={'pixel'} size={'lg'} className='text-xl' 
       onClick={()=>sandpack.runSandpack()}> Run Code </Button>
       <Button variant={'pixel'} className='bg-[#a3e534] text-xl' size={'lg'} 
@@ -66,7 +65,7 @@ function CodeEditor({courseExerciseData,loading} : Props) {
         template={courseExerciseData?.editorType??'react'}
         theme={amethyst}
         style={{
-            height:'100vh'
+            height:'100%'
         }}
         files={courseExerciseData?.exerciseData?.exerciseContent?.starterCode}
         options={{
@@ -78,13 +77,11 @@ function CodeEditor({courseExerciseData,loading} : Props) {
                    height:'100%'
                 }}>
 
-                <SplitterLayout
-                percentage
-                primaryMinSize={30}
-                secondaryMinSize={30}
-                secondaryInitialSize={50}
+                <ResizableGroup
+                  id="sandpack-split"
+                  panelIds={["sandpack-editor", "sandpack-preview"]}
                 >
-                 <div className='relative h-full '>
+                 <ResizablePanel id="sandpack-editor" defaultSize="50%" minSize="30%" className='relative'>
                 <SandpackCodeEditor 
                 showTabs
                 style={{
@@ -93,8 +90,9 @@ function CodeEditor({courseExerciseData,loading} : Props) {
                   <CodeEditorChildren
                   onCompleteExercise={onCompleteExercise}
                   IsCompleted={IsCompleted}/>
-                  </div>
-
+                  </ResizablePanel>
+                <ResizableHandle />
+                <ResizablePanel id="sandpack-preview" defaultSize="50%" minSize="30%">
                 <SandpackPreview 
                 showNavigator
                 showOpenInCodeSandbox={false}
@@ -103,7 +101,8 @@ function CodeEditor({courseExerciseData,loading} : Props) {
                 style={{
                    height:'100%'
                 }}/>
-                </SplitterLayout>
+                </ResizablePanel>
+                </ResizableGroup>
             </SandpackLayout>
         </SandpackProvider>
 

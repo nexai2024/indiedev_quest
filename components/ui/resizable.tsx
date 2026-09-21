@@ -1,56 +1,89 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { GripVerticalIcon } from "lucide-react"
-import * as ResizablePrimitive from "react-resizable-panels"
+import { useAuth } from "@clerk/nextjs";
+import { GripVertical } from "lucide-react";
+import {
+  Group,
+  Panel,
+  Separator,
+  useDefaultLayout,
+  type LayoutStorage,
+} from "react-resizable-panels";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
-function ResizablePanelGroup({
+const ssrStorage: LayoutStorage = {
+  getItem: () => null,
+  setItem: () => {},
+};
+
+type ResizableGroupProps = React.ComponentProps<typeof Group> & {
+  panelIds?: string[];
+};
+
+function ResizableGroup({
   className,
+  defaultLayout: defaultLayoutProp,
+  id,
+  onLayoutChanged: onLayoutChangedProp,
+  orientation = "horizontal",
+  panelIds,
   ...props
-}: React.ComponentProps<typeof ResizablePrimitive.PanelGroup>) {
+}: ResizableGroupProps) {
+  const { userId } = useAuth();
+  const layoutId = `${userId ?? "anonymous"}:${String(id ?? "resizable")}`;
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    id: layoutId,
+    onlySaveAfterUserInteractions: true,
+    panelIds,
+    storage: typeof window === "undefined" ? ssrStorage : localStorage,
+  });
+
   return (
-    <ResizablePrimitive.PanelGroup
-      data-slot="resizable-panel-group"
-      className={cn(
-        "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
-        className
-      )}
+    <Group
       {...props}
+      defaultLayout={defaultLayoutProp ?? defaultLayout}
+      id={id}
+      onLayoutChanged={(layout, meta) => {
+        onLayoutChanged(layout, meta);
+        onLayoutChangedProp?.(layout, meta);
+      }}
+      orientation={orientation}
+      className={cn("flex h-full w-full", className)}
     />
-  )
+  );
 }
 
 function ResizablePanel({
+  className,
   ...props
-}: React.ComponentProps<typeof ResizablePrimitive.Panel>) {
-  return <ResizablePrimitive.Panel data-slot="resizable-panel" {...props} />
+}: React.ComponentProps<typeof Panel>) {
+  return (
+    <Panel className={cn("min-h-0 min-w-0 overflow-hidden", className)} {...props} />
+  );
 }
 
 function ResizableHandle({
-  withHandle,
   className,
+  withHandle = true,
   ...props
-}: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
-  withHandle?: boolean
-}) {
+}: React.ComponentProps<typeof Separator> & { withHandle?: boolean }) {
   return (
-    <ResizablePrimitive.PanelResizeHandle
-      data-slot="resizable-handle"
+    <Separator
+      aria-label="Resize panels"
       className={cn(
-        "bg-border focus-visible:ring-ring relative flex w-px items-center justify-center after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-hidden data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:translate-x-0 data-[panel-group-direction=vertical]:after:-translate-y-1/2 [&[data-panel-group-direction=vertical]>div]:rotate-90",
+        "relative flex w-2 shrink-0 items-center justify-center bg-yellow-500/20 transition-colors hover:bg-yellow-400/50",
         className
       )}
       {...props}
     >
       {withHandle && (
-        <div className="bg-border z-10 flex h-4 w-3 items-center justify-center rounded-xs border">
-          <GripVerticalIcon className="size-2.5" />
+        <div className="z-10 flex h-8 w-3 items-center justify-center rounded-sm border border-yellow-500/40 bg-neutral-900">
+          <GripVertical className="size-3 text-yellow-400" />
         </div>
       )}
-    </ResizablePrimitive.PanelResizeHandle>
-  )
+    </Separator>
+  );
 }
 
-export { ResizablePanelGroup, ResizablePanel, ResizableHandle }
+export { ResizableGroup, ResizablePanel, ResizableHandle };

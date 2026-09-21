@@ -1,4 +1,4 @@
-import { integer, json, pgTable, varchar, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { integer, json, pgTable, uniqueIndex, varchar, text, timestamp, boolean } from "drizzle-orm/pg-core";
 
 // -------------------------------------------------------------
 // USER & CHARACTER SCHEMA
@@ -9,16 +9,17 @@ export const usersTable = pgTable("users", {
   name: varchar({ length: 255 }).notNull(),
   username: varchar({ length: 255 }),
   role: varchar({ length: 50 }).default('NOVICE'), // NOVICE, BUILDER, MENTOR, GUILD_MASTER, ADMIN
-  characterClass: varchar({ length: 100 }).default('Frontend Specialist'), // Frontend Specialist, Full-Stack Artisan, AI Builder, Systems Engineer
-  primaryGoal: varchar({ length: 255 }).default('Build First SaaS'),
+  characterClass: varchar({ length: 100 }).default(''),
+  primaryGoal: varchar({ length: 255 }).default(''),
   level: integer().default(1),
   xp: integer().default(0),
-  gold: integer().default(100),
+  gold: integer().default(0),
   talentPoints: integer().default(0),
   avatarUrl: varchar({ length: 500 }),
   partyId: integer(),
   points: integer().default(0),
-  subscription: varchar({ length: 50 }).default('free')
+  subscription: varchar({ length: 50 }).default('free'),
+  stripeConnectId: varchar({ length: 255 }),
 });
 
 // -------------------------------------------------------------
@@ -50,11 +51,27 @@ export const submissionsTable = pgTable("submissions", {
   userQuestId: integer(),
   userId: varchar({ length: 255 }).notNull(),
   userName: varchar({ length: 255 }),
+  questId: varchar({ length: 100 }),
   questTitle: varchar({ length: 255 }).notNull(),
-  proofUrl: varchar({ length: 500 }).notNull(), // Repo, demo link, or Loom video
+  proofUrl: varchar({ length: 2000 }).notNull(), // First proof URL (compat)
+  proofUrls: json().$type<string[]>(),
   notes: text(),
   isApproved: boolean().default(false),
   reviewNotes: text(),
+  validationStatus: varchar({ length: 50 }).default("PENDING"), // PENDING, PASSED, FAILED
+  validationReport: json().$type<{
+    summary: string;
+    requiredCount: number;
+    submittedCount: number;
+    passedCount: number;
+    items: Array<{
+      url: string;
+      passed: boolean;
+      reason: string;
+      httpStatus?: number;
+      title?: string;
+    }>;
+  }>(),
   createdAt: timestamp().defaultNow()
 });
 
@@ -81,10 +98,75 @@ export const mentorshipsTable = pgTable("mentorships", {
   menteeId: varchar({ length: 255 }).notNull(),
   menteeName: varchar({ length: 255 }),
   topic: varchar({ length: 255 }).notNull(),
-  status: varchar({ length: 50 }).default('PENDING'), // PENDING, ACTIVE, COMPLETED, CANCELLED
+  status: varchar({ length: 50 }).default('PENDING'),
   costInGold: integer().default(50),
   scheduledAt: varchar({ length: 255 }),
-  createdAt: timestamp().defaultNow()
+  createdAt: timestamp().defaultNow(),
+  sessionKind: varchar({ length: 20 }).default("LIVE"),
+  paymentKind: varchar({ length: 20 }).default("GOLD"),
+  slotId: integer(),
+  projectUrl: varchar({ length: 2000 }),
+  question: text(),
+  mentorRecap: text(),
+  menteeRating: integer(),
+  mentorRating: integer(),
+  menteeCompleted: boolean().default(false),
+  mentorCompleted: boolean().default(false),
+  escrowStatus: varchar({ length: 20 }).default("HELD"),
+  guildCutGold: integer().default(0),
+  mentorPayoutGold: integer().default(0),
+  cashUsdCents: integer().default(0),
+  guildCutUsdCents: integer().default(0),
+  mentorPayoutUsdCents: integer().default(0),
+  stripeCheckoutId: varchar({ length: 255 }),
+  stripeTransferId: varchar({ length: 255 }),
+  cashPaid: boolean().default(false),
+});
+
+export const mentorProfilesTable = pgTable("mentorProfiles", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar({ length: 255 }).notNull().unique(),
+  name: varchar({ length: 255 }).notNull(),
+  status: varchar({ length: 50 }).notNull().default("VETTING"),
+  bio: text().notNull(),
+  headline: varchar({ length: 200 }),
+  specialties: json().$type<string[]>(),
+  hourlyRateGold: integer().notNull().default(100),
+  hourlyRateUsdCents: integer().notNull().default(0),
+  githubLogin: varchar({ length: 100 }),
+  githubUrl: varchar({ length: 500 }),
+  proofUrls: json().$type<string[]>(),
+  ratingSum: integer().default(0),
+  ratingCount: integer().default(0),
+  sessionsCompleted: integer().default(0),
+  stripeConnectId: varchar({ length: 255 }),
+  rejectReason: text(),
+  reviewedBy: varchar({ length: 255 }),
+  createdAt: timestamp().defaultNow(),
+  reviewedAt: timestamp(),
+});
+
+export const mentorVouchesTable = pgTable(
+  "mentorVouches",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    applicantId: varchar({ length: 255 }).notNull(),
+    voucherId: varchar({ length: 255 }).notNull(),
+    voucherName: varchar({ length: 255 }),
+    note: varchar({ length: 300 }),
+    createdAt: timestamp().defaultNow(),
+  },
+  (table) => [uniqueIndex("mentor_vouches_unique").on(table.applicantId, table.voucherId)]
+);
+
+export const mentorSlotsTable = pgTable("mentorSlots", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  mentorUserId: varchar({ length: 255 }).notNull(),
+  startsAt: timestamp().notNull(),
+  endsAt: timestamp().notNull(),
+  status: varchar({ length: 20 }).default("OPEN"),
+  sessionId: integer(),
+  createdAt: timestamp().defaultNow(),
 });
 
 // -------------------------------------------------------------
@@ -192,4 +274,65 @@ export const ExerciseTable = pgTable("exercise", {
   exerciseId: varchar({ length: 100 }),
   exerciseContent: json(),
   exerciseName: varchar({ length: 255 })
+});
+
+export const hackathonsTable = pgTable("hackathons", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  slug: varchar({ length: 120 }).notNull().unique(),
+  title: varchar({ length: 255 }).notNull(),
+  theme: varchar({ length: 120 }).notNull(),
+  description: text().notNull(),
+  hostId: varchar({ length: 255 }).notNull(),
+  hostName: varchar({ length: 255 }),
+  startsAt: timestamp().notNull(),
+  endsAt: timestamp().notNull(),
+  status: varchar({ length: 50 }).default("OPEN"),
+  winnerId: varchar({ length: 255 }),
+  winnerName: varchar({ length: 255 }),
+  xpReward: integer().default(250),
+  goldReward: integer().default(120),
+  sponsorId: varchar({ length: 80 }),
+  sponsorName: varchar({ length: 255 }),
+  sponsorUrl: varchar({ length: 500 }),
+  prizeCashUsd: integer().default(0),
+  createdAt: timestamp().defaultNow(),
+});
+
+export const hackathonEntriesTable = pgTable("hackathonEntries", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  hackathonId: integer().notNull(),
+  userId: varchar({ length: 255 }).notNull(),
+  userName: varchar({ length: 255 }),
+  status: varchar({ length: 50 }).default("JOINED"),
+  projectTitle: varchar({ length: 255 }),
+  projectUrl: varchar({ length: 2000 }),
+  repoUrl: varchar({ length: 2000 }),
+  notes: text(),
+  joinedAt: timestamp().defaultNow(),
+  submittedAt: timestamp(),
+});
+
+export const hackathonVotesTable = pgTable(
+  "hackathonVotes",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    hackathonId: integer().notNull(),
+    voterId: varchar({ length: 255 }).notNull(),
+    candidateUserId: varchar({ length: 255 }).notNull(),
+    createdAt: timestamp().defaultNow(),
+  },
+  (table) => [uniqueIndex("hackathon_votes_voter").on(table.hackathonId, table.voterId)]
+);
+
+export const userAcademyProgressTable = pgTable("userAcademyProgress", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar({ length: 255 }).notNull(),
+  courseId: varchar({ length: 100 }).notNull(),
+  completedChapterIds: json().$type<string[]>(),
+  chapterStars: json().$type<Record<string, number>>(),
+  xpEarned: integer().default(0),
+  finalPercent: integer().default(0),
+  finalPassed: boolean().default(false),
+  startedAt: timestamp().defaultNow(),
+  completedAt: timestamp(),
 });

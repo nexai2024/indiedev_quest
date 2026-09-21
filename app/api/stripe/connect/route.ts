@@ -1,47 +1,58 @@
-import { db } from "@/config/db";
-import { usersTable } from "@/config/schema";
-import { currentUser } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { requireCharacter } from "@/lib/character";
+import { createAccountLink, createConnectAccount, retrieveConnectAccount, stripeConfigured } from "@/lib/stripe-connect";
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/config/db";
+import { mentorProfilesTable, usersTable } from "@/config/schema";
+import { eq } from "drizzle-orm";
+
+export async function GET() {
+  try {
+    const authed = await requireCharacter();
+    if (!authed.ok) return authed.error;
+    const email = authed.user.primaryEmailAddress?.emailAddress;
+    if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!stripeConfigured()) {
+      return NextResponse.json({ configured: false, payoutsEnabled: false });
+    }
+    const profiles = await db.select().from(mentorProfilesTable).where(eq(mentorProfilesTable.userId, email)).limit(1);
+    const accountId = profiles[0]?.stripeConnectId;
+    if (!accountId) return NextResponse.json({ configured: true, connected: false, payoutsEnabled: false });
+    const account = await retrieveConnectAccount(accountId);
+    return NextResponse.json({ configured: true, connected: true, ...account });
+  } catch (error) {
+    console.error("GET stripe connect error:", error);
+    return NextResponse.json({ configured: stripeConfigured(), error: "Could not load Connect status." }, { status: 500 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await currentUser();
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-    }
-    const userEmail = user.primaryEmailAddress.emailAddress;
-
-    const { action = "ONBOARD" } = await req.json();
-
-    if (action === "ONBOARD") {
-      const mockConnectAccount = {
-        accountId: `acct_connect_${Date.now()}`,
-        onboardingUrl: `https://connect.stripe.com/express/oauth/authorize?response_type=code&client_id=ca_test_indiedev&scope=read_write`,
-        status: "PENDING_VERIFICATION"
-      };
-
-      return NextResponse.json({
-        success: true,
-        account: mockConnectAccount,
-        message: "Stripe Connect Express onboarding link generated."
-      });
+    const authed = await requireCharacter();
+    if (!authed.ok) return authed.error;
+    const email = authed.user.primaryEmailAddress?.emailAddress;
+    if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!stripeConfigured()) {
+      return NextResponse.json({ error: "Stripe is not configured. Gold mentorship still pays mentors." }, { status: 400 });
     }
 
-    if (action === "PAYOUT") {
-      return NextResponse.json({
-        success: true,
-        payoutId: `po_test_${Date.now()}`,
-        amountInCents: 15000,
-        currency: "usd",
-        status: "IN_TRANSIT",
-        message: "Automatic Stripe Connect payout initiated to seller bank account."
-      });
+    const profiles = await db.select().from(mentorProfilesTable).where(eq(mentorProfilesTable.userId, email)).limit(1);
+    const profile = profiles[0];
+    if (!profile || profile.status !== "APPROVED") {
+      return NextResponse.json({ error: "Only approved mentors can open Connect." }, { status: 403 });
     }
 
-    return NextResponse.json({ success: false, message: "Invalid action" }, { status: 400 });
+    const accountId = profile.stripeConnectId || (await createConnectAccount(email));
+    if (!profile.stripeConnectId) {
+      await db.update(mentorProfilesTable).set({ stripeConnectId: accountId }).where(eq(mentorProfilesTable.id, profile.id));
+      await db.update(usersTable).set({ stripeConnectId: accountId }).where(eq(usersTable.email, email));
+    }
+
+    const origin = req.nextUrl.origin;
+    const url = await createAccountLink(accountId, `${origin}/mentorship?connect=return`, `${origin}/mentorship?connect=refresh`);
+    return NextResponse.json({ success: true, url });
   } catch (error) {
     console.error("Stripe Connect error:", error);
-    return NextResponse.json({ success: false, error: "Stripe Connect processing failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Stripe Connect processing failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,135 +1,93 @@
 import { db } from "@/config/db";
-import { usersTable, partiesTable, userQuestsTable, questsTable, userBadgesTable } from "@/config/schema";
+import { usersTable } from "@/config/schema";
+import { acceptUserQuest } from "@/lib/accept-quest";
+import { starterQuestForClass } from "@/lib/content/class-starter-quests";
+import { isHeroClassId, isHeroGoal } from "@/lib/content/hero-options";
+import {
+  clerkDisplayName,
+  clerkEmail,
+  clerkUsername,
+  hasCompletedOnboarding,
+  withOnboardingFlag,
+} from "@/lib/user-profile";
 import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-const DEFAULT_QUESTS = [
-  {
-    questId: "main_ship_mvp",
-    title: "Ship a MVP in 14 Days",
-    description: "Scope down your core feature set, implement authentication, and deploy a live link to Vercel.",
-    xpReward: 300,
-    goldReward: 150,
-    levelReq: 1,
-    category: "Main"
-  },
-  {
-    questId: "side_nextauth_drizzle",
-    title: "Implement NextAuth & Drizzle Schema",
-    description: "Set up full authentication and connected database ORM models for your application.",
-    xpReward: 150,
-    goldReward: 75,
-    levelReq: 1,
-    category: "Side"
-  },
-  {
-    questId: "side_stripe_checkout",
-    title: "Integrate Stripe Payment Gateway",
-    description: "Add subscription or one-time payment processing for monetizing your digital app.",
-    xpReward: 200,
-    goldReward: 100,
-    levelReq: 2,
-    category: "Side"
-  }
-];
-
 export async function POST(req: NextRequest) {
   try {
-    const { characterClass, primaryGoal, skillLevel } = await req.json();
+    const body = await req.json();
     const user = await currentUser();
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
+    const userEmail = user ? clerkEmail(user) : null;
+
+    if (!user || !userEmail) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userEmail = user.primaryEmailAddress.emailAddress;
 
-    // 1. Ensure default party exists
-    let parties = await db.select().from(partiesTable);
-    let partyId = 1;
-    if (parties.length === 0) {
-      const newParty = await db.insert(partiesTable).values({
-        name: "The Code Alchemists",
-        description: "A guild cohort of ambitious indie builders mastering full-stack arcana.",
-        mentorName: "Guildmaster Sarah",
-        mentorId: "mentor_sarah",
-        avatar: "/hero.gif"
-      }).returning();
-      partyId = newParty[0].id;
-    } else {
-      partyId = parties[0].id;
+    if (!isHeroClassId(body.characterClass) || !isHeroGoal(body.primaryGoal)) {
+      return NextResponse.json(
+        { error: "Pick a class and a primary goal to create your hero." },
+        { status: 400 }
+      );
     }
 
-    // 2. Ensure default quests exist in questsTable
-    for (const q of DEFAULT_QUESTS) {
-      const existing = await db.select().from(questsTable).where(eq(questsTable.questId, q.questId));
-      if (existing.length === 0) {
-        await db.insert(questsTable).values(q);
-      }
-    }
+    const profileUpdate = {
+      characterClass: body.characterClass,
+      primaryGoal: body.primaryGoal,
+    };
 
-    // 3. Update user profile
-    const levelBoost = skillLevel === 'Intermediate' ? 2 : skillLevel === 'Advanced' ? 3 : 1;
-    const initialXp = levelBoost * 100;
-    const initialGold = levelBoost * 150;
+    const existingUsers = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, userEmail));
+    const firstCharacter = !hasCompletedOnboarding(existingUsers[0] ?? null);
 
-    const existingUsers = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));
-
+    let saved;
     if (existingUsers.length > 0) {
-      await db.update(usersTable)
-        .set({
-          characterClass: characterClass || "Frontend Specialist",
-          primaryGoal: primaryGoal || "Build First SaaS",
-          level: levelBoost,
-          xp: initialXp,
-          gold: initialGold,
-          talentPoints: levelBoost,
-          partyId: partyId,
-          role: "BUILDER"
-        })
-        .where(eq(usersTable.email, userEmail));
+      saved = await db
+        .update(usersTable)
+        .set(profileUpdate)
+        .where(eq(usersTable.email, userEmail))
+        .returning();
     } else {
-      await db.insert(usersTable).values({
-        email: userEmail,
-        name: user?.fullName || "Indie Hacker",
-        username: user?.username || userEmail.split("@")[0],
-        characterClass: characterClass || "Frontend Specialist",
-        primaryGoal: primaryGoal || "Build First SaaS",
-        level: levelBoost,
-        xp: initialXp,
-        gold: initialGold,
-        talentPoints: levelBoost,
-        partyId: partyId,
-        role: "BUILDER"
-      });
+      saved = await db
+        .insert(usersTable)
+        .values({
+          email: userEmail,
+          name: clerkDisplayName(user),
+          username: clerkUsername(user),
+          characterClass: profileUpdate.characterClass,
+          primaryGoal: profileUpdate.primaryGoal,
+          level: 1,
+          xp: 0,
+          gold: 0,
+          talentPoints: 0,
+          partyId: null,
+          role: "NOVICE",
+          avatarUrl: user.imageUrl || null,
+        })
+        .returning();
     }
 
-    // 4. Assign default active quests for user
-    for (const q of DEFAULT_QUESTS) {
-      const existingUQ = await db.select().from(userQuestsTable).where(eq(userQuestsTable.userId, userEmail));
-      const hasQuest = existingUQ.some(u => u.questId === q.questId);
-      if (!hasQuest) {
-        await db.insert(userQuestsTable).values({
-          userId: userEmail,
-          questId: q.questId,
-          status: "IN_PROGRESS"
-        });
+    let starterQuest = null;
+    if (firstCharacter) {
+      const starter = starterQuestForClass(profileUpdate.characterClass);
+      if (starter) {
+        try {
+          starterQuest = await acceptUserQuest(userEmail, starter.questId);
+        } catch (error) {
+          console.error("Failed to auto-accept starter quest:", error);
+        }
       }
     }
 
-    // 5. Award "Guild Initiate" badge
-    const existingBadges = await db.select().from(userBadgesTable).where(eq(userBadgesTable.userId, userEmail));
-    const hasBadge = existingBadges.some(b => b.badgeName === "Guild Initiate");
-    if (!hasBadge) {
-      await db.insert(userBadgesTable).values({
-        userId: userEmail,
-        badgeName: "Guild Initiate",
-        badgeIcon: "🛡️"
-      });
-    }
-
-    return NextResponse.json({ success: true, partyId });
+    return NextResponse.json({
+      success: true,
+      user: withOnboardingFlag({ ...saved[0], persisted: true }),
+      starterQuest,
+    });
   } catch (error) {
     console.error("Error in onboarding API:", error);
-    return NextResponse.json({ success: true, partyId: 1 });
+    return NextResponse.json({ error: "Failed to save character" }, { status: 500 });
   }
 }

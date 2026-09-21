@@ -1,34 +1,38 @@
 import { db } from "@/config/db";
 import { usersTable } from "@/config/schema";
-import { currentUser } from "@clerk/nextjs/server";
+import { requireCharacter } from "@/lib/character";
+import { clerkDisplayName } from "@/lib/user-profile";
+import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-let tavernMessagesStore = [
-  { id: 1, user: "Guildmaster Sarah", role: "MENTOR", message: "Welcome to the Guild Tavern! Grab a brew and share what you're building today! 🍻", time: "10 mins ago" },
-  { id: 2, user: "David K.", role: "BUILDER", message: "Just deployed my Next.js 15 auth pipeline to Vercel! Check out the Vault showroom!", time: "5 mins ago" },
-  { id: 3, user: "Elena R.", role: "BUILDER", message: "Anyone down for a live pairing session on AI vector embeddings in 1 hour?", time: "2 mins ago" }
-];
+let tavernMessagesStore: Array<{
+  id: number;
+  user: string;
+  role: string;
+  message: string;
+  time: string;
+}> = [];
 
-export async function GET(req: NextRequest) {
+export async function GET() {
+  const authed = await requireCharacter();
+  if (!authed.ok) return authed.error;
   return NextResponse.json(tavernMessagesStore);
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const authed = await requireCharacter();
+    if (!authed.ok) return authed.error;
+    const user = authed.user;
     const body = await req.json();
 
-    // 1. Post a new real-time Tavern chat message
     if (body.message) {
-      const user = await currentUser();
-      const userName = user?.fullName || user?.firstName || body.user || "Indie Hero";
-      const userRole = body.role || "BUILDER";
-
       const newMsg = {
         id: Date.now(),
-        user: userName,
-        role: userRole,
+        user: clerkDisplayName(user),
+        role: "BUILDER",
         message: body.message,
-        time: "Just now"
+        time: "Just now",
       };
 
       tavernMessagesStore.push(newMsg);
@@ -39,24 +43,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: newMsg, store: tavernMessagesStore });
     }
 
-    // 2. Execute CLI Macro Command
     if (body.command) {
-      const command = body.command;
-      const cmd = command.trim().toLowerCase();
+      const cmd = String(body.command).trim().toLowerCase();
       let output = "";
 
       if (cmd === "/quest" || cmd === "/quests") {
-        output = "📜 ACTIVE QUESTS:\n1. [Main] Ship a MVP in 14 Days (+300 XP / +150 Gold)\n2. [Side] Implement NextAuth & Drizzle Schema (+150 XP)";
+        output = "📜 No active quests. Visit /quests to accept one.";
       } else if (cmd === "/stats") {
-        output = "📊 CHARACTER STATS:\nClass: Full-Stack Artisan\nLevel: 2\nXP: 250 / 600\nGold: 300\nParty: The Code Alchemists";
+        const email = user?.primaryEmailAddress?.emailAddress;
+        if (!email) {
+          output = "Not signed in.";
+        } else {
+          const rows = await db.select().from(usersTable).where(eq(usersTable.email, email));
+          const u = rows[0];
+          if (!u) {
+            output = "No character yet. Visit the dashboard to create one.";
+          } else {
+            output = `📊 CHARACTER STATS:\nName: ${u.name}\nClass: ${u.characterClass || "Unassigned"}\nLevel: ${u.level}\nXP: ${u.xp}\nGold: ${u.gold}`;
+          }
+        }
       } else if (cmd === "/cast-spell") {
-        output = "✨ CAST SPELL: 'Auto-Refactor'! Code quality boosted +20%! +50 XP granted!";
+        output = "✨ No spells unlocked yet. Complete quests to earn talent points.";
       } else if (cmd === "/party") {
-        output = "🛡️ GUILD COHORT: The Code Alchemists (4 Members, Led by Guildmaster Sarah)";
+        output = "🛡️ You are not in a party yet.";
       } else if (cmd === "/gold") {
-        output = "💰 GOLD BALANCE: 300 Gold. Visit /marketplace to spend Gold or list assets!";
+        const email = user?.primaryEmailAddress?.emailAddress;
+        if (!email) {
+          output = "Not signed in.";
+        } else {
+          const rows = await db.select().from(usersTable).where(eq(usersTable.email, email));
+          output = `💰 GOLD BALANCE: ${rows[0]?.gold ?? 0} Gold.`;
+        }
       } else {
-        output = `🤖 Executed command: '${command}'. Type /quest, /stats, /cast-spell, /party, or /gold for available terminal macros.`;
+        output = `🤖 Unknown command: '${body.command}'. Type /quest, /stats, /party, or /gold.`;
       }
 
       return NextResponse.json({ success: true, output });
@@ -65,6 +84,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("POST tavern error:", error);
-    return NextResponse.json({ success: true, output: "Command executed." });
+    return NextResponse.json({ error: "Failed to run tavern action" }, { status: 500 });
   }
 }

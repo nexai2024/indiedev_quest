@@ -1,88 +1,97 @@
 import { db } from "@/config/db";
-import { usersTable, partiesTable } from "@/config/schema";
+import { usersTable } from "@/config/schema";
+import { ensureStarterQuest } from "@/lib/accept-quest";
+import {
+  clerkDisplayName,
+  clerkEmail,
+  clerkUsername,
+  emptyUserProfile,
+  hasCompletedOnboarding,
+  withOnboardingFlag,
+} from "@/lib/user-profile";
 import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+async function attachStarterQuest<T extends { email?: string | null; characterClass?: string | null }>(row: T) {
+  if (hasCompletedOnboarding(row) && row.email && row.characterClass) {
+    try {
+      await ensureStarterQuest(row.email, row.characterClass);
+    } catch (error) {
+      console.error("Failed to ensure starter quest:", error);
+    }
+  }
+  return withOnboardingFlag({ ...row, persisted: true });
+}
+
+export async function POST() {
+  const user = await currentUser();
+  const email = user ? clerkEmail(user) : null;
+
+  if (!user || !email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const identity = emptyUserProfile(user, true);
+
   try {
-    const user = await currentUser();
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
-      return NextResponse.json({
-        id: 1,
-        email: "demo@indiedev.quest",
-        name: "Adventurer",
-        username: "indiedev",
-        role: "BUILDER",
-        characterClass: "Full-Stack Artisan",
-        primaryGoal: "Build First SaaS",
-        level: 1,
-        xp: 150,
-        gold: 250,
-        talentPoints: 2,
-        partyId: 1
-      });
+    const existingUsers = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email));
+
+    if (existingUsers.length === 0) {
+      const result = await db
+        .insert(usersTable)
+        .values({
+          name: identity.name,
+          email,
+          username: identity.username,
+          role: "NOVICE",
+          characterClass: "",
+          primaryGoal: "",
+          level: 1,
+          xp: 0,
+          gold: 0,
+          talentPoints: 0,
+          partyId: null,
+          avatarUrl: identity.avatarUrl,
+        })
+        .returning();
+
+      return NextResponse.json(await attachStarterQuest(result[0]!));
     }
 
-    const email = user.primaryEmailAddress.emailAddress;
-    const existingUsers = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    const existing = existingUsers[0];
+    const nextName = clerkDisplayName(user);
+    const nextUsername = clerkUsername(user);
+    const nextAvatar = user.imageUrl || existing.avatarUrl;
 
-    if (existingUsers.length <= 0) {
-      // Ensure default party exists
-      let partyList = await db.select().from(partiesTable);
-      let partyId = 1;
-      if (partyList.length === 0) {
-        const defaultParty = await db.insert(partiesTable).values({
-          name: "The Code Alchemists",
-          description: "A guild cohort of ambitious indie builders mastering full-stack arcana.",
-          mentorName: "Guildmaster Sarah",
-          mentorId: "mentor_sarah",
-          avatar: "/hero.gif"
-        }).returning();
-        partyId = defaultParty[0].id;
-      } else {
-        partyId = partyList[0].id;
-      }
+    if (
+      existing.name !== nextName ||
+      existing.username !== nextUsername ||
+      existing.avatarUrl !== nextAvatar
+    ) {
+      const updated = await db
+        .update(usersTable)
+        .set({
+          name: nextName,
+          username: nextUsername,
+          avatarUrl: nextAvatar,
+        })
+        .where(eq(usersTable.email, email))
+        .returning();
 
-      const newUser = {
-        name: user.fullName || user.firstName || "Indie Hacker",
-        email: email,
-        username: user.username || email.split("@")[0],
-        role: "NOVICE",
-        characterClass: "Frontend Specialist",
-        primaryGoal: "Build First SaaS",
-        level: 1,
-        xp: 100,
-        gold: 150,
-        talentPoints: 1,
-        partyId: partyId,
-        avatarUrl: user.imageUrl || "/public/badge.png"
-      };
-
-      const result = await db.insert(usersTable).values(newUser).returning();
-      return NextResponse.json(result[0]);
+      return NextResponse.json(await attachStarterQuest(updated[0]!));
     }
 
-    return NextResponse.json(existingUsers[0]);
+    return NextResponse.json(await attachStarterQuest(existing));
   } catch (error) {
     console.error("User POST route error:", error);
-    return NextResponse.json({
-      id: 1,
-      email: "guest@indiedev.quest",
-      name: "Guest Dev",
-      username: "guest_dev",
-      role: "BUILDER",
-      characterClass: "Full-Stack Artisan",
-      primaryGoal: "Build First SaaS",
-      level: 2,
-      xp: 250,
-      gold: 300,
-      talentPoints: 2,
-      partyId: 1
-    });
+    return NextResponse.json(emptyUserProfile(user, false));
   }
 }
 
-export async function GET(req: NextRequest) {
-  return POST(req);
+export async function GET() {
+  return POST();
 }

@@ -16,11 +16,25 @@ interface SubmissionItem {
   id: number;
   userId: string;
   userName: string;
+  questId?: string;
   questTitle: string;
   proofUrl: string;
+  proofUrls?: string[];
   notes?: string;
   isApproved: boolean;
   reviewNotes?: string;
+  validationStatus?: string;
+  validationReport?: {
+    summary: string;
+    requiredCount: number;
+    passedCount: number;
+    aiUsed: boolean;
+    items: Array<{ url: string; passed: boolean; reason: string; directoryName?: string }>;
+    foundHosts?: string[];
+    missingHosts?: string[];
+    unrecognizedHosts?: string[];
+    repeatedHosts?: string[];
+  };
   createdAt: string;
 }
 
@@ -143,7 +157,48 @@ export default function VaultPage() {
                 <span className="truncate">{sub.proofUrl}</span>
               </a>
 
-              {sub.reviewNotes && (
+              {(sub.proofUrls?.length || 0) > 1 && (
+                <div className="text-[11px] font-mono text-gray-400">
+                  {sub.proofUrls!.length} deliverable URLs submitted
+                </div>
+              )}
+
+              {sub.validationReport && (
+                <div className="bg-neutral-950/80 p-3 rounded border border-neutral-800 text-xs font-mono space-y-1">
+                  <div className={`font-bold ${sub.validationReport.passedCount === sub.validationReport.requiredCount ? "text-emerald-400" : "text-amber-400"}`}>
+                    AI: {sub.validationReport.passedCount}/{sub.validationReport.requiredCount} deliverables passed
+                  </div>
+                  <div className="text-gray-300">{sub.validationReport.summary}</div>
+                  {!!sub.validationReport.missingHosts?.length && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-amber-400 uppercase">Still needed</span>
+                      {sub.validationReport.missingHosts.map((name) => (
+                        <span
+                          key={name}
+                          className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-amber-300"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {!!sub.validationReport.foundHosts?.length && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-emerald-400 uppercase">Found</span>
+                      {sub.validationReport.foundHosts.map((name) => (
+                        <span
+                          key={name}
+                          className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-emerald-300"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {sub.reviewNotes && !sub.validationReport && (
                 <div className="bg-neutral-950/80 p-3 rounded border border-neutral-800 text-xs font-mono space-y-1">
                   <div className="text-yellow-400 font-bold flex items-center gap-1">
                     <Sparkles className="w-3.5 h-3.5" /> Mentor Feedback:
@@ -187,15 +242,42 @@ export default function VaultPage() {
 
           <div className="space-y-4 py-3">
             <div className="bg-neutral-950 p-3 rounded border border-neutral-800 space-y-2">
-              <div className="text-xs font-mono text-gray-400">Proof URL:</div>
-              <a
-                href={selectedSub?.proofUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-indigo-400 hover:underline text-sm font-mono flex items-center gap-1"
-              >
-                {selectedSub?.proofUrl} <ExternalLink className="w-4 h-4" />
-              </a>
+              <div className="text-xs font-mono text-gray-400">Proof URLs:</div>
+              {(selectedSub?.proofUrls?.length ? selectedSub.proofUrls : selectedSub?.proofUrl ? [selectedSub.proofUrl] : []).map((url) => (
+                <a
+                  key={url}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-indigo-400 hover:underline text-sm font-mono flex items-center gap-1 break-all"
+                >
+                  {url} <ExternalLink className="w-4 h-4 shrink-0" />
+                </a>
+              ))}
+              {selectedSub?.validationReport && (
+                <div className="text-xs font-mono space-y-1 pt-2">
+                  <div className="text-yellow-400 font-bold">AI validation</div>
+                  {!!selectedSub.validationReport.missingHosts?.length && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-amber-400 uppercase">Still needed</span>
+                      {selectedSub.validationReport.missingHosts.map((name) => (
+                        <span
+                          key={name}
+                          className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-amber-300"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {selectedSub.validationReport.items.map((item) => (
+                    <div key={item.url} className={item.passed ? "text-emerald-300" : "text-red-300"}>
+                      {item.passed ? "✓" : "✕"} {item.directoryName ? `${item.directoryName}: ` : ""}
+                      {item.reason}
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="text-xs font-mono text-gray-400 mt-2">Notes:</div>
               <p className="text-sm text-gray-300">{selectedSub?.notes || "None"}</p>
             </div>

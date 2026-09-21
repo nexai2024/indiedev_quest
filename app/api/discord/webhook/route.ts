@@ -1,7 +1,13 @@
+import { clerkDisplayName } from "@/lib/user-profile";
+import { requireCharacter } from "@/lib/character";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const authed = await requireCharacter();
+    if (!authed.ok) return authed.error;
+    const caller = authed.user;
+
     const { event, title, description, user, url } = await req.json();
 
     const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
@@ -11,7 +17,7 @@ export async function POST(req: NextRequest) {
       description: description || "A new RPG milestone was achieved in the Guild!",
       color: event === "RAID_VICTORY" ? 0xef4444 : event === "LEVEL_UP" ? 0xeab308 : 0x6366f1,
       fields: [
-        { name: "Indie Builder", value: user || "Anonymous Hero", inline: true },
+        { name: "Indie Builder", value: user || clerkDisplayName(caller), inline: true },
         { name: "Event Type", value: event || "GUILD_QUEST", inline: true }
       ],
       url: url || "https://indiedev.quest/vault",

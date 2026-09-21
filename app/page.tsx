@@ -1,16 +1,21 @@
-import { Button } from "@/components/ui/button";
-import Header from "./_components/Header";
+import { loadCharacter } from "@/lib/character";
+import { hasCompletedOnboarding } from "@/lib/user-profile";
+import { currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import Hero from "./_components/Hero";
 
-export default function Home(){
+export default async function Home() {
+  const user = await currentUser();
+  if (user) {
+    const profile = await loadCharacter(user);
+    if (!hasCompletedOnboarding(profile)) {
+      redirect("/onboarding");
+    }
+  }
+
   return (
     <div className="flex flex-col items-center">
-      
-
-      {/* Hero Section */}
       <Hero />
-
-
-     </div>
+    </div>
   );
 }

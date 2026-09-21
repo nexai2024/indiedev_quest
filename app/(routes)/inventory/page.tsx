@@ -8,8 +8,16 @@ import { Crown, Sparkles, Shield, Zap } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
+type InventoryItem = {
+  id: number;
+  name: string;
+  type: string;
+  rarity: string;
+  equipped: boolean;
+};
+
 export default function InventoryPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<InventoryItem[]>([]);
 
   useEffect(() => {
     axios.get("/api/inventory").then((res) => setItems(res.data));
@@ -27,7 +35,13 @@ export default function InventoryPage() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        {items.map((item) => (
+        {items.length === 0 ? (
+          <Card className="md:col-span-3 bg-neutral-900 border-neutral-800 p-8 text-center space-y-2">
+            <h3 className="text-xl font-game font-bold text-yellow-400">Inventory is empty</h3>
+            <p className="text-sm text-gray-400">Earn cosmetic gear by completing quests and raids.</p>
+          </Card>
+        ) : (
+          items.map((item) => (
           <Card key={item.id} className="bg-neutral-900 border-neutral-800 p-6 space-y-4">
             <Badge variant="pixel" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/40">
               {item.rarity} {item.type}
@@ -37,7 +51,8 @@ export default function InventoryPage() {
               {item.equipped ? "EQUIPPED ✓" : "EQUIP GEAR"}
             </Button>
           </Card>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

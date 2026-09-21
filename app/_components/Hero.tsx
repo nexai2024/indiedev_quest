@@ -29,7 +29,7 @@ function Hero() {
         <h1
           className="font-bold text-6xl sm:text-7xl md:text-8xl font-game tracking-wider text-yellow-400 leading-none"
           style={{
-            textShadow: "4px 4px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 0 20px rgba(234, 179, 8, 0.4)"
+            textShadow: "4px 4px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 0 20px var(--brand-glow)"
           }}
         >
           THE RPG JOURNEY FOR INDIE HACKERS

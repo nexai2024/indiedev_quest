@@ -1,6 +1,6 @@
 import { db } from "@/config/db";
 import { productsTable, usersTable } from "@/config/schema";
-import { currentUser } from "@clerk/nextjs/server";
+import { requireCharacter } from "@/lib/character";
 import { eq, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -73,8 +73,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await currentUser();
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
+    const authed = await requireCharacter();
+    if (!authed.ok) return authed.error;
+    const user = authed.user;
+    if (!user.primaryEmailAddress?.emailAddress) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

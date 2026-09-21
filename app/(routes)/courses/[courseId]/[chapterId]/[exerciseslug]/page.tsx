@@ -2,12 +2,11 @@
 import axios from 'axios';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react'
-import SplitterLayout from 'react-splitter-layout';
-import 'react-splitter-layout/lib/index.css';
 import { CompleteExercise, exercise } from '../../../_components/CourseList';
 import ContentSection from './_components/ContentSection';
 import CodeEditor from './_components/CodeEditor';
 import { Button } from '@/components/ui/button';
+import { ResizableGroup, ResizableHandle, ResizablePanel } from '@/components/ui/resizable';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -107,24 +106,27 @@ function Playground() {
   }
 
   return (
-    <div className='border-t-4'>
-        <SplitterLayout percentage
-        primaryMinSize={40}
-        secondaryMinSize={60}
+    <div className='flex h-full min-h-0 flex-col overflow-hidden border-t-4'>
+        <ResizableGroup
+          className='min-h-0 flex-1'
+          id="exercise-playground"
+          panelIds={["exercise-content", "exercise-editor"]}
         >
-           <div>
-            <ContentSection courseExerciseData={courseExerciseData}
-            loading={loading}
-            />
-           </div>
-           <div>
+           <ResizablePanel id="exercise-content" defaultSize="40%" minSize="25%">
+            <div className='h-full overflow-auto'>
+              <ContentSection courseExerciseData={courseExerciseData}
+              loading={loading}
+              />
+            </div>
+           </ResizablePanel>
+           <ResizableHandle />
+           <ResizablePanel id="exercise-editor" defaultSize="60%" minSize="35%">
             <CodeEditor courseExerciseData={courseExerciseData}
             loading={loading}/>
-           </div>
-        </SplitterLayout>
+           </ResizablePanel>
+        </ResizableGroup>
 
-
-        <div className='font-game fixed bottom-0 w-full bg-zinc-900 flex  p-4 justify-between items-center'>
+        <div className='font-game w-full shrink-0 bg-zinc-900 flex p-4 justify-between items-center'>
               <Link href={prevButtonRoute??'/courses/'+courseId}>
                   <Button variant={'pixel'} className='text-xl'> Previous</Button>
                   </Link>

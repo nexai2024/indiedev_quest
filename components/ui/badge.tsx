@@ -18,7 +18,7 @@ const badgeVariants = cva(
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         pixel:
-          "border-yellow-400 bg-yellow-500/20 text-yellow-400 font-game shadow-[2px_2px_0px_0px_#ca8a04]",
+          "border-yellow-400 bg-yellow-500/20 text-yellow-400 font-game shadow-[2px_2px_0px_0px_var(--pixel-shadow)]",
       },
     },
     defaultVariants: {

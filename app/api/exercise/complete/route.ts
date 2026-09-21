@@ -1,23 +1,17 @@
 import { db } from "@/config/db";
 import { CompleteExerciseTable, EnrolledCourseTable, usersTable } from "@/config/schema";
-import { currentUser } from "@clerk/nextjs/server";
+import { requireCharacter } from "@/lib/character";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-// Next.js 15/16 requires the second argument to have params as a Promise
-export async function POST(
-  req: NextRequest, 
-  { params }: { params: Promise<any> } 
-) {
-  // Even if you don't use params, the build validator expects this structure
-  await params; 
-
+export async function POST(req: NextRequest) {
   try {
     const { courseId, chapterId, exerciseId, xpEarned } = await req.json();
-    const user = await currentUser();
+    const authed = await requireCharacter();
+    if (!authed.ok) return authed.error;
+    const user = authed.user;
 
-    // Guard: Ensure user is logged in
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
+    if (!user.primaryEmailAddress?.emailAddress) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

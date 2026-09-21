@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { requireCharacter } from "@/lib/character";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   return NextResponse.json({
-    currentStreakDays: 7,
-    longestStreakDays: 14,
-    xpMultiplier: 1.25,
-    lastActiveDate: new Date().toISOString()
+    currentStreakDays: 0,
+    longestStreakDays: 0,
+    xpMultiplier: 1,
+    lastActiveDate: null,
   });
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    return NextResponse.json({
-      success: true,
-      currentStreakDays: 8,
-      xpBonusGranted: 100,
-      message: "Daily streak updated! 1.25x XP multiplier active!"
-    });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to update streak" }, { status: 500 });
-  }
+export async function POST() {
+  const authed = await requireCharacter();
+  if (!authed.ok) return authed.error;
+
+  return NextResponse.json({
+    success: true,
+    currentStreakDays: 1,
+    xpBonusGranted: 0,
+    message: "Daily streak started.",
+  });
 }

@@ -113,17 +113,7 @@ export async function GET(req: NextRequest) {
         .where(eq(EnrolledCourseTable.userId, userEmail));
 
       if (enrolledCourses.length === 0) {
-        return NextResponse.json([
-          {
-            courseId: 101,
-            title: "Full-Stack Next.js 15 & Drizzle Masterclass",
-            bannerImage: "/course-banner.gif",
-            totalExercises: 5,
-            completedExercises: 2,
-            xpEarned: 150,
-            level: "Intermediate"
-          }
-        ]);
+        return NextResponse.json([]);
       }
 
       const courseIds = enrolledCourses.map((c) => c.CourseId!).filter(Boolean);

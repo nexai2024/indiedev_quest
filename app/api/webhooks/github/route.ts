@@ -1,6 +1,5 @@
 import { db } from "@/config/db";
-import { userQuestsTable, usersTable, submissionsTable, userBadgesTable } from "@/config/schema";
-import { eq, and } from "drizzle-orm";
+import { submissionsTable } from "@/config/schema";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -45,7 +44,7 @@ export async function POST(req: NextRequest) {
       commitMsg = `PR #${payload.number}: ${payload.pull_request?.title || "Pull Request Submitted"}`;
     }
 
-    const userEmail = payload.pusher?.email || payload.head_commit?.author?.email || payload.pull_request?.user?.email || "demo@indiedev.quest";
+    const userEmail = payload.pusher?.email || payload.head_commit?.author?.email || payload.pull_request?.user?.email;
 
     if (!userEmail || !repoUrl) {
       return NextResponse.json({ error: "Missing user email or repo URL in webhook payload" }, { status: 400 });
@@ -59,73 +58,47 @@ export async function POST(req: NextRequest) {
       targetQuestId = "side_stripe_checkout";
     }
 
-    // 1. Create proof submission automatically from GitHub Push or PR
+    // 1. Create proof submission from GitHub Push or PR — do not auto-complete
+    // counted quests. Run the same AI deliverable validator on the repo URL.
+    const { validateQuestProof } = await import("@/lib/validate-quest");
+    const report = await validateQuestProof({
+      questId: targetQuestId,
+      proofUrls: [repoUrl],
+      notes: commitMsg || "",
+    });
+
     const newSubmission = await db
       .insert(submissionsTable)
       .values({
         userId: userEmail,
         userName: sender,
-        questTitle: `GitHub ${event === 'pull_request' ? 'PR' : 'Push'} Auto-Validation (${targetQuestId})`,
+        questId: targetQuestId,
+        questTitle: `GitHub ${event === "pull_request" ? "PR" : "Push"} (${targetQuestId})`,
         proofUrl: repoUrl,
-        notes: `Automated GitHub Event [${event}]: "${commitMsg || 'Code change'}"`,
-        isApproved: true,
-        reviewNotes: "Automated verification by GitHub Webhook Engine"
+        proofUrls: [repoUrl],
+        notes: `Automated GitHub Event [${event}]: "${commitMsg || "Code change"}"`,
+        isApproved: report.allPassed,
+        reviewNotes: report.summary,
+        validationStatus: report.allPassed ? "PASSED" : "FAILED",
+        validationReport: report,
       })
       .returning();
 
-    // 2. Mark quest as COMPLETED for user
-    const userQuests = await db
-      .select()
-      .from(userQuestsTable)
-      .where(and(eq(userQuestsTable.userId, userEmail), eq(userQuestsTable.questId, targetQuestId)));
-
-    if (userQuests.length > 0) {
-      await db
-        .update(userQuestsTable)
-        .set({ status: "COMPLETED", completedAt: new Date() })
-        .where(eq(userQuestsTable.id, userQuests[0].id));
-    } else {
-      await db.insert(userQuestsTable).values({
-        userId: userEmail,
-        questId: targetQuestId,
-        status: "COMPLETED",
-        completedAt: new Date()
-      });
+    if (report.allPassed) {
+      const { completeUserQuest } = await import("@/lib/complete-quest");
+      await completeUserQuest({ userEmail, questId: targetQuestId });
     }
-
-    // 3. Award XP & Gold to user
-    const userRecords = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));
-    if (userRecords.length > 0) {
-      const u = userRecords[0];
-      const xpReward = 200;
-      const goldReward = 100;
-      const newXp = (u.xp || 0) + xpReward;
-      const newGold = (u.gold || 0) + goldReward;
-      const newLevel = Math.floor(newXp / 300) + 1;
-
-      await db
-        .update(usersTable)
-        .set({
-          xp: newXp,
-          gold: newGold,
-          level: newLevel
-        })
-        .where(eq(usersTable.email, userEmail));
-    }
-
-    // 4. Grant "GitHub Automator" badge
-    await db.insert(userBadgesTable).values({
-      userId: userEmail,
-      badgeName: "GitHub Automator",
-      badgeIcon: "⚡"
-    });
 
     return NextResponse.json({
       success: true,
       event,
       questId: targetQuestId,
+      validated: report.allPassed,
+      validation: report,
       submission: newSubmission[0],
-      message: `GitHub ${event} webhook processed and quest auto-validated!`
+      message: report.allPassed
+        ? `GitHub ${event} proof passed AI validation.`
+        : `GitHub ${event} recorded; AI did not auto-complete this quest.`,
     });
   } catch (error) {
     console.error("GitHub webhook error:", error);

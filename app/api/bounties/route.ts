@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireCharacter } from "@/lib/character";
 
 const DEFAULT_BOUNTIES = [
   {
@@ -27,6 +28,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const authed = await requireCharacter();
+    if (!authed.ok) return authed.error;
+
     const body = await req.json();
     const newBounty = {
       id: Date.now(),

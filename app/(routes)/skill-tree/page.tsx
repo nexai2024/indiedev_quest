@@ -20,7 +20,7 @@ interface SkillNode {
 export default function SkillTreePage() {
   const [nodes, setNodes] = useState<SkillNode[]>([]);
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
-  const [talentPoints, setTalentPoints] = useState(2);
+  const [talentPoints, setTalentPoints] = useState(0);
   const [level, setLevel] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +33,7 @@ export default function SkillTreePage() {
       const res = await axios.get("/api/skill-tree");
       setNodes(res.data.nodes || []);
       setUnlockedIds(res.data.unlockedIds || []);
-      setTalentPoints(res.data.talentPoints ?? 2);
+      setTalentPoints(res.data.talentPoints ?? 0);
       setLevel(res.data.level ?? 1);
     } catch (err) {
       console.error(err);
@@ -69,7 +69,7 @@ export default function SkillTreePage() {
     }
   };
 
-  const trees = ["Frontend Arcana", "Backend Alchemy", "AI Sorcery", "Monetization Bard"];
+  const trees = Array.from(new Set(nodes.map((node) => node.tree)));
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white p-6 md:p-12 max-w-7xl mx-auto space-y-8">

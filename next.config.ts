@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    useTypeScriptCli: true,
+  },
+  outputFileTracingIncludes: {
+    "/api/arena": ["./lib/**/*"],
+  },
   images: {
     remotePatterns: [
       {
